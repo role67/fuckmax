@@ -3,3 +3,4 @@ gunicorn
 requests
 python-telegram-bot
 python-dotenv
+psycopg2-binary
