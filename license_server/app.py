@@ -36,9 +36,9 @@ def push_token():
     print(f"[PUSH_TOKEN] {device_id} -> {token}")
 # app = Flask(__name__)  # Already initialized above
 
-DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_PWenZv13MCXU@ep-muddy-boat-agmm69y8-pooler.c-2.eu-central-1.aws.neon.tech/licensefuckmax?sslmode=require&channel_binding=require')
-
-DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_PWenZv13MCXU@ep-muddy-boat-agmm69y8-pooler.c-2.eu-central-1.aws.neon.tech/licensefuckmax?sslmode=require&channel_binding=require')
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL is not set in environment variables")
 
 LICENSE_TYPES = {
     'month': {'days': 30, 'name': 'Месяц'},

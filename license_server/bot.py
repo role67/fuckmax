@@ -7,8 +7,13 @@ from psycopg2.extras import DictCursor
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
-TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN', '8463057207:AAEY0GOWaQcMkCTsBY-YmTt-AOJIJQmZISo')
-DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_PWenZv13MCXU@ep-muddy-boat-agmm69y8-pooler.c-2.eu-central-1.aws.neon.tech/licensefuckmax?sslmode=require&channel_binding=require')
+TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
+if not TELEGRAM_TOKEN:
+    raise ValueError("TELEGRAM_TOKEN is not set in environment variables")
+
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL is not set in environment variables")
 ADMIN_IDS = {634552356, 6602937273}
 
 LICENSE_TYPES = {
