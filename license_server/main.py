@@ -7,8 +7,8 @@ import psycopg2
 from psycopg2.extras import DictCursor
 from datetime import datetime, timedelta
 import nest_asyncio
-
 nest_asyncio.apply()
+import asyncio
 
 # --- Конфиг ---
 TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -244,5 +244,5 @@ if __name__ == "__main__":
     application.add_handler(CommandHandler("list", tg_list_keys))
     application.add_handler(CommandHandler("verify", tg_verify))
     WEBHOOK_URL = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/{TOKEN}"
-    application.bot.set_webhook(url=WEBHOOK_URL)
+    asyncio.run(application.bot.set_webhook(url=WEBHOOK_URL))
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
