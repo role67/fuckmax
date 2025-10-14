@@ -148,15 +148,24 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     await update.message.reply_text(text)
 
-def main():
-    init_db()
-    app = Application.builder().token(TELEGRAM_TOKEN).build()
-    app.add_handler(CommandHandler('start', start))
-    app.add_handler(CommandHandler('generate', generate))
-    app.add_handler(CommandHandler('ban', ban))
-    app.add_handler(CommandHandler('list', list_keys))
-    app.add_handler(CommandHandler('verify', verify))
-    app.run_polling()
+async def main():
+    try:
+        init_db()
+        app = Application.builder().token(TELEGRAM_TOKEN).build()
+        app.add_handler(CommandHandler('start', start))
+        app.add_handler(CommandHandler('generate', generate))
+        app.add_handler(CommandHandler('ban', ban))
+        app.add_handler(CommandHandler('list', list_keys))
+        app.add_handler(CommandHandler('verify', verify))
+        
+        print("[BOT] Starting Telegram bot...")
+        await app.initialize()
+        await app.start()
+        await app.run_polling(allowed_updates=["message", "callback_query"])
+    except Exception as e:
+        print(f"[BOT ERROR] {e}")
+        raise e
 
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())
