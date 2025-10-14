@@ -1,7 +1,7 @@
 import os
 from flask import Flask, request, jsonify
 import telegram
-from telegram.ext import Dispatcher, CommandHandler, CallbackContext
+from telegram.ext import Application, CommandHandler, ContextTypes
 from telegram import Update
 import psycopg2
 from psycopg2.extras import DictCursor
@@ -20,8 +20,9 @@ LICENSE_TYPES = {
     'lifetime': {'days': None, 'name': 'Пожизненно'}
 }
 
-bot = telegram.Bot(token=TOKEN)
+
 app = Flask(__name__)
+application = Application.builder().token(TOKEN).build()
 
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
@@ -127,14 +128,8 @@ def ping():
 
 @app.route(f"/{TOKEN}", methods=["POST"])
 def telegram_webhook():
-    dispatcher = Dispatcher(bot, None, workers=0)
-    update = telegram.Update.de_json(request.get_json(force=True), bot)
-    dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(CommandHandler("generate", tg_generate))
-    dispatcher.add_handler(CommandHandler("ban", tg_ban))
-    dispatcher.add_handler(CommandHandler("list", tg_list_keys))
-    dispatcher.add_handler(CommandHandler("verify", tg_verify))
-    dispatcher.process_update(update)
+    update = telegram.Update.de_json(request.get_json(force=True), application.bot)
+    application.process_update(update)
     return "ok"
 
 # --- Telegram bot handlers ---
@@ -145,7 +140,7 @@ def admin_only(update: Update):
         return False
     return True
 
-def start(update: Update, context: CallbackContext):
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     name = user.full_name
     username = user.username
@@ -171,11 +166,11 @@ def start(update: Update, context: CallbackContext):
         )
     update.message.reply_text(text)
 
-def tg_generate(update: Update, context: CallbackContext):
+async def tg_generate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not admin_only(update): return
     args = context.args
     if not args or args[0] not in LICENSE_TYPES:
-        update.message.reply_text("Использование: /generate <month|year|lifetime>")
+        await update.message.reply_text("Использование: /generate <month|year|lifetime>")
         return
     license_type = args[0]
     key = generate_key()
@@ -188,13 +183,13 @@ def tg_generate(update: Update, context: CallbackContext):
                     (key, license_type, created_at, expires_at))
         conn.commit()
     conn.close()
-    update.message.reply_text(f"Ключ: {key}\nТип: {LICENSE_TYPES[license_type]['name']}\nСрок: {expires_at.strftime('%d.%m.%Y %H:%M') if expires_at else 'Бессрочно'}")
+    await update.message.reply_text(f"Ключ: {key}\nТип: {LICENSE_TYPES[license_type]['name']}\nСрок: {expires_at.strftime('%d.%m.%Y %H:%M') if expires_at else 'Бессрочно'}")
 
-def tg_ban(update: Update, context: CallbackContext):
+async def tg_ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not admin_only(update): return
     args = context.args
     if not args:
-        update.message.reply_text("Использование: /ban <key>")
+        await update.message.reply_text("Использование: /ban <key>")
         return
     key = args[0]
     conn = get_db_connection()
@@ -202,9 +197,9 @@ def tg_ban(update: Update, context: CallbackContext):
         cur.execute("UPDATE licenses SET is_active = FALSE WHERE key_value = %s", (key,))
         conn.commit()
     conn.close()
-    update.message.reply_text(f"Ключ {key} заблокирован.")
+    await update.message.reply_text(f"Ключ {key} заблокирован.")
 
-def tg_list_keys(update: Update, context: CallbackContext):
+async def tg_list_keys(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not admin_only(update): return
     conn = get_db_connection()
     with conn.cursor(cursor_factory=DictCursor) as cur:
@@ -212,18 +207,18 @@ def tg_list_keys(update: Update, context: CallbackContext):
         rows = cur.fetchall()
     conn.close()
     if not rows:
-        update.message.reply_text("Нет ключей.")
+        await update.message.reply_text("Нет ключей.")
         return
     text = '\n'.join([
         f"{row['key_value']}: {LICENSE_TYPES[row['license_type']]['name']}, до {row['expires_at'] if row['expires_at'] else 'Бессрочно'}, {'OK' if row['is_active'] else 'BAN'}" for row in rows
     ])
-    update.message.reply_text(text)
+    await update.message.reply_text(text)
 
-def tg_verify(update: Update, context: CallbackContext):
+async def tg_verify(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not admin_only(update): return
     args = context.args
     if not args:
-        update.message.reply_text("Использование: /verify <key>")
+        await update.message.reply_text("Использование: /verify <key>")
         return
     key = args[0]
     conn = get_db_connection()
@@ -232,10 +227,10 @@ def tg_verify(update: Update, context: CallbackContext):
         row = cur.fetchone()
     conn.close()
     if not row:
-        update.message.reply_text("Ключ не найден.")
+        await update.message.reply_text("Ключ не найден.")
         return
     status = 'OK' if row['is_active'] else 'BAN'
-    update.message.reply_text(f"Ключ: {row['key_value']}\nТип: {LICENSE_TYPES[row['license_type']]['name']}\nСтатус: {status}\nСрок: {row['expires_at'] if row['expires_at'] else 'Бессрочно'}")
+    await update.message.reply_text(f"Ключ: {row['key_value']}\nТип: {LICENSE_TYPES[row['license_type']]['name']}\nСтатус: {status}\nСрок: {row['expires_at'] if row['expires_at'] else 'Бессрочно'}")
 
 @app.route('/')
 def index():
@@ -243,7 +238,11 @@ def index():
 
 if __name__ == "__main__":
     init_db()
-    # Установить webhook (один раз вручную или через код)
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("generate", tg_generate))
+    application.add_handler(CommandHandler("ban", tg_ban))
+    application.add_handler(CommandHandler("list", tg_list_keys))
+    application.add_handler(CommandHandler("verify", tg_verify))
     WEBHOOK_URL = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/{TOKEN}"
-    bot.set_webhook(url=WEBHOOK_URL)
+    application.bot.set_webhook(url=WEBHOOK_URL)
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
