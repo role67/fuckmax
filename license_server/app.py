@@ -6,6 +6,45 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
+@app.route('/api/validate', methods=['POST'])
+def api_validate():
+    data = request.get_json() or {}
+    key = data.get('key', '').strip().upper()
+    if not key:
+        return jsonify({
+            'valid': False,
+            'banned': False,
+            'expired': False,
+            'type': None,
+            'expires_at': None,
+            'reason': 'Ключ не передан'
+        }), 400
+    conn = get_db_connection()
+    with conn.cursor(cursor_factory=DictCursor) as cur:
+        cur.execute("SELECT key_value, license_type, expires_at, is_active FROM licenses WHERE key_value = %s", (key,))
+        row = cur.fetchone()
+    conn.close()
+    if not row:
+        return jsonify({
+            'valid': False,
+            'banned': False,
+            'expired': False,
+            'type': None,
+            'expires_at': None,
+            'reason': 'Ключ не найден'
+        }), 404
+    banned = not row['is_active']
+    expired = row['expires_at'] and row['expires_at'] < datetime.utcnow()
+    valid = row['is_active'] and not expired
+    return jsonify({
+        'valid': valid,
+        'banned': banned,
+        'expired': expired,
+        'type': row['license_type'],
+        'expires_at': row['expires_at'].isoformat() if row['expires_at'] else None,
+        'reason': None if valid else ('Ключ заблокирован' if banned else 'Срок действия истек' if expired else 'Ошибка')
+    })
+
 @app.route('/push_token', methods=['POST'])
 def push_token():
     data = request.get_json() or {}
