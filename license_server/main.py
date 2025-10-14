@@ -129,6 +129,7 @@ def ping():
 @app.route(f"/{TOKEN}", methods=["POST"])
 def telegram_webhook():
     update = telegram.Update.de_json(request.get_json(force=True), application.bot)
+    asyncio.run(application.initialize())
     asyncio.run(application.process_update(update))
     return "ok"
 
