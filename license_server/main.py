@@ -129,8 +129,8 @@ def ping():
 @app.route(f"/{TOKEN}", methods=["POST"])
 def telegram_webhook():
     update = telegram.Update.de_json(request.get_json(force=True), application.bot)
-    asyncio.run(application.initialize())
-    asyncio.run(application.process_update(update))
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(application.process_update(update))
     return "ok"
 
 # --- Telegram bot handlers ---
@@ -245,5 +245,7 @@ if __name__ == "__main__":
     application.add_handler(CommandHandler("list", tg_list_keys))
     application.add_handler(CommandHandler("verify", tg_verify))
     WEBHOOK_URL = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/{TOKEN}"
-    asyncio.run(application.bot.set_webhook(url=WEBHOOK_URL))
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(application.initialize())
+    loop.run_until_complete(application.bot.set_webhook(url=WEBHOOK_URL))
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
