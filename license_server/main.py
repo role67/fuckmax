@@ -226,14 +226,13 @@ async def tg_verify(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def index():
     return 'License Server & Telegram Bot is running.'
 
-if __name__ == "__main__":
-    init_db()
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("generate", tg_generate))
-    application.add_handler(CommandHandler("ban", tg_ban))
-    application.add_handler(CommandHandler("list", tg_list_keys))
-    application.add_handler(CommandHandler("verify", tg_verify))
-    WEBHOOK_URL = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/{TOKEN}"
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(application.initialize())
-    loop.run_until_complete(application.bot.set_webhook(url=WEBHOOK_URL))
+init_db()
+application.add_handler(CommandHandler("start", start))
+application.add_handler(CommandHandler("generate", tg_generate))
+application.add_handler(CommandHandler("ban", tg_ban))
+application.add_handler(CommandHandler("list", tg_list_keys))
+application.add_handler(CommandHandler("verify", tg_verify))
+WEBHOOK_URL = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/{TOKEN}"
+loop = asyncio.get_event_loop()
+loop.run_until_complete(application.initialize())
+loop.run_until_complete(application.bot.set_webhook(url=WEBHOOK_URL))
