@@ -143,11 +143,7 @@ async def admin_only(update: Update):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    username = user.username
-    if username:
-        name = f"<a href='https://t.me/{username}'>@{username}</a>"
-    else:
-        name = user.full_name
+    name = user.full_name
     if user.id in ADMIN_IDS:
         text = (
             f"Здравствуйте, {name}!\n\n"
@@ -167,7 +163,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Для покупки обращаться: @role69, @fuckgrazie\n"
             "Оплата: Cryptobot, TG Stars 💳"
         )
-    await update.message.reply_text(text, parse_mode="HTML")
+    await update.message.reply_text(text)
 
 async def tg_generate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await admin_only(update): return
