@@ -134,21 +134,19 @@ def telegram_webhook():
     return "ok"
 
 # --- Telegram bot handlers ---
-def admin_only(update: Update):
+async def admin_only(update: Update):
     user_id = update.effective_user.id
     if user_id not in ADMIN_IDS:
-        update.message.reply_text("Нет доступа.")
+        await update.message.reply_text("Нет доступа.")
         return False
     return True
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     name = user.full_name
-    username = user.username
-    mention = f"@{username}" if username else name
     if user.id in ADMIN_IDS:
         text = (
-            f"Здравствуйте, {mention}!\n\n"
+            f"Здравствуйте, {name}!\n\n"
             "🛠️ Вам доступны эти команды:\n"
             "🔑 /generate <lictype> — создать новый лицензионный ключ\n"
             "⛔ /ban <key> — заблокировать ключ\n"
@@ -157,7 +155,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     else:
         text = (
-            f"Здравствуйте, {mention}!\n\n"
+            f"Здравствуйте, {name}!\n\n"
             "💸 Наш прайс-лист:\n"
             "• 📅 Месяц — 99р\n"
             "• 🗓️ Год — 349р\n"
@@ -165,10 +163,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Для покупки обращаться: @role69, @fuckgrazie\n"
             "Оплата: Cryptobot, TG Stars 💳"
         )
-    update.message.reply_text(text)
+    await update.message.reply_text(text)
 
 async def tg_generate(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not admin_only(update): return
+    if not await admin_only(update): return
     args = context.args
     if not args or args[0] not in LICENSE_TYPES:
         await update.message.reply_text("Использование: /generate <month|year|lifetime>")
@@ -187,7 +185,7 @@ async def tg_generate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"Ключ: {key}\nТип: {LICENSE_TYPES[license_type]['name']}\nСрок: {expires_at.strftime('%d.%m.%Y %H:%M') if expires_at else 'Бессрочно'}")
 
 async def tg_ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not admin_only(update): return
+    if not await admin_only(update): return
     args = context.args
     if not args:
         await update.message.reply_text("Использование: /ban <key>")
@@ -201,7 +199,7 @@ async def tg_ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"Ключ {key} заблокирован.")
 
 async def tg_list_keys(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not admin_only(update): return
+    if not await admin_only(update): return
     conn = get_db_connection()
     with conn.cursor(cursor_factory=DictCursor) as cur:
         cur.execute("SELECT key_value, license_type, expires_at, is_active FROM licenses ORDER BY created_at DESC")
@@ -216,7 +214,7 @@ async def tg_list_keys(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text)
 
 async def tg_verify(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not admin_only(update): return
+    if not await admin_only(update): return
     args = context.args
     if not args:
         await update.message.reply_text("Использование: /verify <key>")
