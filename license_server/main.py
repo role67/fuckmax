@@ -9,8 +9,6 @@ from datetime import datetime, timedelta
 import nest_asyncio
 nest_asyncio.apply()
 import asyncio
-
-# --- Конфиг ---
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 DATABASE_URL = os.getenv("DATABASE_URL")
 ADMIN_IDS = set(int(x) for x in os.getenv("ADMINS_IDS", "").split(",") if x.strip().isdigit())
@@ -19,14 +17,10 @@ LICENSE_TYPES = {
     'year': {'days': 365, 'name': 'Год'},
     'lifetime': {'days': None, 'name': 'Пожизненно'}
 }
-
-
 app = Flask(__name__)
 application = Application.builder().token(TOKEN).build()
-
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
-
 def init_db():
     conn = get_db_connection()
     cur = conn.cursor()
@@ -43,7 +37,6 @@ def init_db():
     conn.commit()
     cur.close()
     conn.close()
-
 def generate_key():
     import random, string
     chars = string.ascii_uppercase + string.digits
@@ -51,8 +44,6 @@ def generate_key():
            f"{''.join(random.choices(chars, k=6))}-" \
            f"{''.join(random.choices(chars, k=4))}-" \
            f"{''.join(random.choices(chars, k=4))}"
-
-# --- Flask endpoints ---
 @app.route('/api/validate', methods=['POST'])
 def api_validate():
     data = request.get_json() or {}
@@ -133,7 +124,6 @@ def telegram_webhook():
     loop.run_until_complete(application.process_update(update))
     return "ok"
 
-# --- Telegram bot handlers ---
 async def admin_only(update: Update):
     user_id = update.effective_user.id
     if user_id not in ADMIN_IDS:
@@ -231,6 +221,7 @@ async def tg_verify(update: Update, context: ContextTypes.DEFAULT_TYPE):
     status = 'OK' if row['is_active'] else 'BAN'
     await update.message.reply_text(f"Ключ: {row['key_value']}\nТип: {LICENSE_TYPES[row['license_type']]['name']}\nСтатус: {status}\nСрок: {row['expires_at'] if row['expires_at'] else 'Бессрочно'}")
 
+
 @app.route('/')
 def index():
     return 'License Server & Telegram Bot is running.'
@@ -246,4 +237,3 @@ if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     loop.run_until_complete(application.initialize())
     loop.run_until_complete(application.bot.set_webhook(url=WEBHOOK_URL))
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
