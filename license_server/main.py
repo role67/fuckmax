@@ -13,7 +13,7 @@ import asyncio
 # --- Конфиг ---
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 DATABASE_URL = os.getenv("DATABASE_URL")
-ADMIN_IDS = set(int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip().isdigit())
+ADMIN_IDS = set(int(x) for x in os.getenv("ADMINS_IDS", "").split(",") if x.strip().isdigit())
 LICENSE_TYPES = {
     'month': {'days': 30, 'name': 'Месяц'},
     'year': {'days': 365, 'name': 'Год'},
@@ -67,7 +67,7 @@ def api_validate():
     if not row:
         return jsonify({'valid': False, 'reason': 'Ключ не найден'}), 404
     banned = not row['is_active']
-    expired = row['expires_at'] and row['expires_at'] < datetime.utcnow()
+    expired = row['expires_at'] and row['expires_at'] < datetime.now(datetime.UTC)
     valid = row['is_active'] and not expired
     return jsonify({
         'valid': valid,
@@ -115,11 +115,11 @@ def verify():
         return jsonify({'valid': False, 'reason': 'Ключ не найден'}), 404
     if not row['is_active']:
         return jsonify({'valid': False, 'reason': 'Ключ заблокирован'}), 403
-    if row['expires_at'] and row['expires_at'] < datetime.utcnow():
+    if row['expires_at'] and row['expires_at'] < datetime.now(datetime.UTC):
         return jsonify({'valid': False, 'reason': 'Срок действия истек'}), 403
     days_left = None
     if row['expires_at']:
-        days_left = (row['expires_at'] - datetime.utcnow()).days
+        days_left = (row['expires_at'] - datetime.now(datetime.UTC)).days
     return jsonify({'valid': True, 'type': row['license_type'], 'days_left': days_left})
 
 @app.route('/ping', methods=['GET'])
@@ -143,7 +143,11 @@ async def admin_only(update: Update):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    name = user.full_name
+    username = user.username
+    if username:
+        name = f"<a href='https://t.me/{username}'>@{username}</a>"
+    else:
+        name = user.full_name
     if user.id in ADMIN_IDS:
         text = (
             f"Здравствуйте, {name}!\n\n"
@@ -163,7 +167,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Для покупки обращаться: @role69, @fuckgrazie\n"
             "Оплата: Cryptobot, TG Stars 💳"
         )
-    await update.message.reply_text(text)
+    await update.message.reply_text(text, parse_mode="HTML")
 
 async def tg_generate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await admin_only(update): return
